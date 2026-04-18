@@ -1,4 +1,5 @@
 # ETL Pipeline: API -> PostgreSQL -> Excel -> Email
+
 Автоматизированный ETL-пайплайн для выгрузки данных из API, сохранения в PostgreSQL, агрегации статистики и отправки отчёта руководителю.
 
 ---
@@ -48,3 +49,161 @@ CREATE TABLE IF NOT EXISTS user_attempts (
     attempt_type VARCHAR(50),
     created_at TIMESTAMP
 );
+```
+
+---
+
+## Демонстрация работы
+
+### 1. Процесс выполнения (логирование)
+
+При запуске скрипта в консоли отображается подробный ход выполнения всех этапов:
+
+![Логирование выполнения ETL](https://github.com/AtacZy/files_prod/raw/master/docs/images/%D0%A1%D0%BA%D1%80%D0%B8%D0%BD%20%D0%BB%D0%BE%D0%B3%D0%B0.png)
+
+**[Скачать полный лог-файл (txt)](https://github.com/AtacZy/files_prod/raw/master/docs/images/%D0%9F%D0%BE%D0%BB%D0%BD%D1%8B%D0%B9%20%D0%BE%D1%82%D1%87%D1%91%D1%82%20%D0%BB%D0%BE%D0%B3%D0%BE%D0%B2.txt)**
+
+**Что отображается в логах:**
+
+- Запуск системы и создание файла лога
+- Запрос к API с параметрами
+- Статус ответа и количество полученных записей
+- Процесс загрузки в базу данных (прогресс каждые 100 записей)
+- Агрегированная статистика
+- Сохранение Excel-файла
+- Отправка email
+- Итоговый статус выполнения
+
+### 2. Сгенерированный Excel-отчёт
+
+Отчёт содержит три раздела с автоматическим форматированием.
+
+**[Скачать пример отчёта (Excel)](https://github.com/AtacZy/files_prod/raw/master/reports/report_2026-04-17.xlsx)**
+
+**Структура отчёта:**
+
+- **Общая статистика** — ключевые показатели за день (всего попыток, уникальные пользователи, правильные/неправильные ответы)
+- **Почасовая статистика** — распределение активности по часам
+- **Топ-10 пользователей** — самые активные пользователи по количеству попыток
+
+### 3. Письмо с отчётом
+
+На указанный email приходит письмо с HTML-телом и вложенным Excel-файлом:
+
+![Email с отчётом](https://github.com/AtacZy/files_prod/raw/master/docs/images/%D0%9E%D1%82%D1%87%D1%91%D1%82%20%D0%BD%D0%B0%20%D0%BF%D0%BE%D1%87%D1%82%D1%83%20mail.png)
+
+**Содержание письма:**
+
+- Тема письма с датой отчёта
+- Краткая сводка основных показателей в теле письма
+- Вложенный Excel-файл с подробной статистикой
+
+---
+
+## Как пользоваться
+
+### Предварительные требования
+
+- Python 3.8 или выше
+- PostgreSQL 12 или выше
+- Доступ к API с валидными ключами
+- Доступ к SMTP-серверу для отправки писем
+
+### Быстрый старт
+
+```bash
+# 1. Клонировать репозиторий
+git clone https://github.com/AtacZy/files_prod.git
+cd files_prod
+
+# 2. Создать и активировать виртуальное окружение
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux/Mac
+source venv/bin/activate
+
+# 3. Установить зависимости
+pip install -r requirements.txt
+
+# 4. Настроить конфигурацию
+copy config.example.py config.py
+# Отредактировать config.py, указав реальные данные API, БД и Email
+
+# 5. Запустить
+python main.py
+```
+
+### Настройка config.py
+
+Создайте файл `config.py` на основе `config.example.py` и заполните своими данными:
+
+```python
+# API
+API_URL = "https://api.example.com/statistics"
+API_CLIENT = "your_client_name"
+API_CLIENT_KEY = "your_secret_key"
+TIMEZONE_OFFSET = 3  # MSK = +3 UTC
+
+# PostgreSQL
+DB_NAME = "analytics"
+DB_USER = "postgres"
+DB_PASSWORD = "your_password"
+DB_HOST = "localhost"
+DB_PORT = 5432
+
+# Email
+EMAIL_SENDER = "reports@company.com"
+EMAIL_PASSWORD = "app_password"
+EMAIL_RECEIVER = "manager@company.com"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+```
+
+> **Важно:** Файл `config.py` добавлен в `.gitignore` и не должен попадать в репозиторий!
+
+### Результат выполнения
+
+После успешного запуска:
+
+- В папке `logs/` появится файл `etl_YYYY-MM-DD.log`
+- В папке `reports/` будет создан Excel-отчёт `report_YYYY-MM-DD.xlsx`
+- На указанный email придёт письмо с отчётом
+
+---
+
+## Структура проекта
+
+```
+files_prod/
+│
+├── .gitignore              # Исключения для Git
+├── README.md               # Документация
+├── requirements.txt        # Python-зависимости
+├── config.example.py       # Шаблон конфигурации
+├── main.py                 # Основной скрипт ETL
+│
+├── docs/
+│   └── images/             # Скриншоты и лог-файл
+│
+├── logs/                   # Логи выполнения (создаётся автоматически)
+│
+└── reports/                # Excel-отчёты (создаётся автоматически)
+```
+
+---
+
+## Примечания
+
+- Система рассчитана на ежедневный запуск (cron / Task Scheduler)
+- Логи хранятся 3 дня, затем автоматически удаляются
+- При ошибке на любом этапе пайплайн корректно завершается с записью в лог
+- Перед загрузкой новых данных старые записи за этот день удаляются (обеспечивает идемпотентность)
+
+---
+
+## Автор
+
+**AtacZy** — Аналитик данных
