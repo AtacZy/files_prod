@@ -16,10 +16,12 @@ ENV/
 logs/
 *.log
 
-# Отчёты
+# Отчёты (игнорируем везде, кроме папки reports/)
 *.xlsx
 *.csv
 *.eml
+!reports/*.xlsx
+!reports/*.csv
 
 # Python
 __pycache__/
@@ -29,10 +31,6 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
 
 # IDE
 .vscode/
